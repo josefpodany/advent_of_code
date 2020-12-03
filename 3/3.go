@@ -10,15 +10,10 @@ import (
 // many trees will be hit
 func slideDown(dx, dy int, levels []string) int {
 	width := len(levels[0])
-	y, x, trees := 0, 0, 0
+	trees := 0
 
-	for {
+	for y, x := dy, 0; y < len(levels); y += dy {
 		x = (x + dx) % width
-		y += dy
-		if y >= len(levels) {
-			break
-		}
-
 		if rune(levels[y][x]) == '#' {
 			// oopsie!
 			trees++
