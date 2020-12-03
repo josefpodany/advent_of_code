@@ -33,7 +33,7 @@ func sum3(arr []int) (int, int, int) {
 
 func main() {
 	// load the inputs
-	file, err := os.Open("./inputs/1.txt")
+	file, err := os.Open("./1.txt")
 	if err != nil {
 		fmt.Printf("couldn't open file: %s\n", err.Error())
 		os.Exit(1)
