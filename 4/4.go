@@ -16,17 +16,19 @@ type Passport map[string]string
 type Passports []Passport
 
 var (
-	eyeColorCodes = []string{"amb", "blu", "brn", "gry", "grn", "hzl", "oth"}
-	validators    = map[string]func(string) bool{
+	eyeColorCodes  = []string{"amb", "blu", "brn", "gry", "grn", "hzl", "oth"}
+	hairColorRegex = regexp.MustCompile(`^#[\w]{6}$`)
+	pidRegex       = regexp.MustCompile(`^[0-9]{9}$`)
+	validators     = map[string]func(string) bool{
 		// validateYear is a curried function. This way, we have one generic
 		// factory that builds different specializations of the validator.
 		"byr": validateYear(1920, 2002),
 		"iyr": validateYear(2010, 2020),
 		"eyr": validateYear(2020, 2030),
 		"hgt": isHeightValid,
-		"hcl": isHairColorValid,
 		"ecl": isEyeColorValid,
-		"pid": isPIDValid,
+		"hcl": func(hc string) bool { return hairColorRegex.MatchString(hc) },
+		"pid": func(pid string) bool { return pidRegex.MatchString(pid) },
 	}
 )
 
@@ -132,11 +134,6 @@ func isHeightValid(height string) bool {
 	return false
 }
 
-func isHairColorValid(hc string) bool {
-	ok, _ := regexp.MatchString(`^#[\w]{6}$`, hc)
-	return ok
-}
-
 func isEyeColorValid(ecl string) bool {
 	for _, validEcl := range eyeColorCodes {
 		if ecl == validEcl {
@@ -146,19 +143,11 @@ func isEyeColorValid(ecl string) bool {
 	return false
 }
 
-func isPIDValid(pid string) bool {
-	ok, _ := regexp.MatchString(`^[0-9]{9}$`, pid)
-	return ok
-}
-
 // Valid returns if the passport is valid according to the validators
 // declared above.
 func (P Passport) Valid() bool {
 	for k, v := range P {
-		if k == "cid" {
-			continue
-		}
-		if !validators[k](v) {
+		if k != "cid" && !validators[k](v) {
 			return false
 		}
 	}
