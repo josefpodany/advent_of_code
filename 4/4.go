@@ -9,33 +9,91 @@ import (
 	"strings"
 )
 
-var validEyeColors = []string{"amb", "blu", "brn", "gry", "grn", "hzl", "oth"}
-var validations = map[string]func(string) bool{
-	"byr": validateYear(1920, 2002),
-	"iyr": validateYear(2010, 2020),
-	"eyr": validateYear(2020, 2030),
-	"hgt": isHeightValid,
-	"hcl": isHairColorValid,
-	"ecl": isEyeColorValid,
-	"pid": isPIDValid,
+// Passport is a type alias to map[string]string
+type Passport map[string]string
+
+// Passports is a type alias to a Passport slice
+type Passports []Passport
+
+var (
+	eyeColorCodes = []string{"amb", "blu", "brn", "gry", "grn", "hzl", "oth"}
+	validators    = map[string]func(string) bool{
+		// validateYear is a curried function. This way, we have one generic
+		// factory that builds different specializations of the validator.
+		"byr": validateYear(1920, 2002),
+		"iyr": validateYear(2010, 2020),
+		"eyr": validateYear(2020, 2030),
+		"hgt": isHeightValid,
+		"hcl": isHairColorValid,
+		"ecl": isEyeColorValid,
+		"pid": isPIDValid,
+	}
+)
+
+func main() {
+	file, err := os.Open("./input.txt")
+	if err != nil {
+		fmt.Printf("couldn't read file: %s\n", err.Error())
+		os.Exit(1)
+	}
+	defer file.Close()
+
+	scanner := bufio.NewScanner(file)
+	ps := Passports{}
+	p := Passport{}
+
+	for scanner.Scan() {
+		line := scanner.Text()
+		if strings.TrimSpace(line) == "" {
+			// This is the newline that separates the passports.
+			// Add the passport to the rest and create a new one.
+			ps = append(ps, p)
+			p = Passport{}
+			continue
+		}
+		pairs := strings.Split(line, " ")
+		for _, pair := range pairs {
+			items := strings.Split(pair, ":")
+			if len(items) != 2 {
+				continue
+			}
+			p[items[0]] = items[1]
+		}
+	}
+
+	// Add the last passport.
+	ps = append(ps, p)
+
+	mandatoryFields := []string{}
+	// Get all mandatory fields from the validations.
+	for field := range validators {
+		mandatoryFields = append(mandatoryFields, field)
+	}
+	withMandatory := ps.FilterMandatory(mandatoryFields)
+	withMandatoryValid := ps.FilterMandatory(mandatoryFields).FilterValid()
+	fmt.Printf("passports w/ mandatory fields: %d\n", len(withMandatory))
+	fmt.Printf("valid passports: %d\n", len(withMandatoryValid))
 }
 
-func hasAllMandatory(pass map[string]string, mandatory []string) bool {
+// HasMandatoryFields described by the mandatory slice passed in
+func (P Passport) HasMandatoryFields(mandatory []string) bool {
 	for _, field := range mandatory {
-		if _, ok := pass[field]; !ok {
+		if _, ok := P[field]; !ok {
 			return false
 		}
 	}
 	return true
 }
-func filterMandatory(passports []map[string]string, mandatory []string) []map[string]string {
-	withMandatory := []map[string]string{}
-	for _, pass := range passports {
-		if hasAllMandatory(pass, mandatory) {
-			withMandatory = append(withMandatory, pass)
+
+// FilterMandatory keys in the passports
+func (Ps Passports) FilterMandatory(mandatory []string) Passports {
+	valid := Passports{}
+	for _, p := range Ps {
+		if p.HasMandatoryFields(mandatory) {
+			valid = append(valid, p)
 		}
 	}
-	return withMandatory
+	return valid
 }
 
 func validateYear(atLeast, atMost int) func(string) bool {
@@ -80,7 +138,7 @@ func isHairColorValid(hc string) bool {
 }
 
 func isEyeColorValid(ecl string) bool {
-	for _, validEcl := range validEyeColors {
+	for _, validEcl := range eyeColorCodes {
 		if ecl == validEcl {
 			return true
 		}
@@ -93,70 +151,27 @@ func isPIDValid(pid string) bool {
 	return ok
 }
 
-func isPassportValid(passport map[string]string) bool {
-	for k, v := range passport {
+// Valid returns if the passport is valid according to the validators
+// declared above.
+func (P Passport) Valid() bool {
+	for k, v := range P {
 		if k == "cid" {
 			continue
 		}
-		if !validations[k](v) {
+		if !validators[k](v) {
 			return false
 		}
 	}
 	return true
 }
 
-func filterValid(passports []map[string]string) []map[string]string {
-	valid := []map[string]string{}
-	for _, pass := range passports {
-		if isPassportValid(pass) {
-			valid = append(valid, pass)
+// FilterValid passports with the validators declared above
+func (Ps Passports) FilterValid() Passports {
+	valid := Passports{}
+	for _, p := range Ps {
+		if p.Valid() {
+			valid = append(valid, p)
 		}
 	}
 	return valid
-}
-
-func main() {
-	file, err := os.Open("./input.txt")
-	if err != nil {
-		fmt.Printf("couldn't read file: %s\n", err.Error())
-		os.Exit(1)
-	}
-	defer file.Close()
-
-	scanner := bufio.NewScanner(file)
-	passports := []map[string]string{}
-	passport := map[string]string{}
-
-	for scanner.Scan() {
-		line := scanner.Text()
-		if strings.TrimSpace(line) == "" {
-			// This is the newline that separates the passports.
-			// Add the passport to the rest and create a new one.
-			passports = append(passports, passport)
-			passport = map[string]string{}
-			continue
-		}
-		pairs := strings.Split(line, " ")
-		for _, pair := range pairs {
-			items := strings.Split(pair, ":")
-			if len(items) != 2 {
-				continue
-			}
-			passport[items[0]] = items[1]
-		}
-	}
-
-	// Add the last passport.
-	passports = append(passports, passport)
-
-	mandatoryFields := []string{}
-	// Get all mandatory fields from the validations.
-	for field := range validations {
-		mandatoryFields = append(mandatoryFields, field)
-	}
-
-	passports = filterMandatory(passports, mandatoryFields)
-	fmt.Printf("passports w/ mandatory fields: %d\n", len(passports))
-	passports = filterValid(passports)
-	fmt.Printf("valid passports: %d\n", len(passports))
 }
