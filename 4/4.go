@@ -11,12 +11,13 @@ import (
 
 type passport map[string]string
 type passports []passport
+type validator func(string) bool
 
 var (
 	eyeColorCodes  = []string{"amb", "blu", "brn", "gry", "grn", "hzl", "oth"}
 	hairColorRegex = regexp.MustCompile(`^#[\w]{6}$`)
 	pidRegex       = regexp.MustCompile(`^[0-9]{9}$`)
-	validators     = map[string]func(string) bool{
+	validators     = map[string]validator{
 		// validateYear is a curried function. This way, we have one generic
 		// factory that builds different specializations of the validator.
 		"byr": validateYear(1920, 2002),
@@ -86,7 +87,7 @@ func (p passport) HasMandatoryFields(mandatory []string) bool {
 
 // valid returns if the passport is valid according to the validators declared above.
 // Function relies on the passport having only the mandatory and optional keys.
-func (p passport) valid(validators map[string]func(string) bool) bool {
+func (p passport) valid(validators map[string]validator) bool {
 	for k, v := range p {
 		if k != "cid" && !validators[k](v) {
 			return false
@@ -107,7 +108,7 @@ func (ps passports) filterMandatory(mandatory []string) passports {
 }
 
 // FilterValid passports with the validators declared above
-func (ps passports) filterValid(validators map[string]func(string) bool) passports {
+func (ps passports) filterValid(validators map[string]validator) passports {
 	valid := passports{}
 	for _, p := range ps {
 		if p.valid(validators) {
