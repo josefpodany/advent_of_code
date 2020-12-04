@@ -4,23 +4,30 @@ import (
 	"bufio"
 	"fmt"
 	"os"
+	"sync"
 )
+
+type result struct {
+	dx, dy int
+	trees  int
+}
 
 // slideDown with the slope of dx, dy and count how
 // many trees will be hit
-func slideDown(dx, dy int, levels []string) int {
+func slideDown(wg *sync.WaitGroup, c chan<- result, dx, dy int, levels []string) {
+	defer wg.Done()
+
 	width := len(levels[0])
 	trees := 0
 
 	for y, x := dy, 0; y < len(levels); y += dy {
 		x = (x + dx) % width
 		if rune(levels[y][x]) == '#' {
-			// oopsie!
 			trees++
 		}
 	}
 
-	return trees
+	c <- result{dx: dx, dy: dy, trees: trees}
 }
 
 // first element represents the dx, second is dy
@@ -30,6 +37,15 @@ var slopes = [][]int{
 	{5, 1},
 	{7, 1},
 	{1, 2},
+}
+
+func consume(c <-chan result) {
+	product := 1
+	for r := range c {
+		fmt.Printf("slope dx: %d, dy: %d, %d trees will be hit\n", r.dx, r.dy, r.trees)
+		product *= r.trees
+	}
+	fmt.Printf("product of all trees encountered: %d\n", product)
 }
 
 func main() {
@@ -48,12 +64,16 @@ func main() {
 		levels = append(levels, scanner.Text())
 	}
 
-	product := 1
+	var wg sync.WaitGroup
+	c := make(chan result)
+	defer close(c)
+
+	go consume(c)
 	for _, slope := range slopes {
+		wg.Add(1)
 		dx, dy := slope[0], slope[1]
-		trees := slideDown(dx, dy, levels)
-		fmt.Printf("slope dx: %d, dy: %d, %d trees will be hit\n", dx, dy, trees)
-		product *= trees
+		go slideDown(&wg, c, dx, dy, levels)
 	}
-	fmt.Printf("product of all trees encountered: %d\n", product)
+
+	wg.Wait()
 }
