@@ -87,11 +87,33 @@ func (P Passport) HasMandatoryFields(mandatory []string) bool {
 	return true
 }
 
+// Valid returns if the passport is valid according to the validators declared above.
+// Function relies on the passport having only the mandatory and optional keys.
+func (P Passport) Valid() bool {
+	for k, v := range P {
+		if k != "cid" && !validators[k](v) {
+			return false
+		}
+	}
+	return true
+}
+
 // FilterMandatory keys in the passports
 func (Ps Passports) FilterMandatory(mandatory []string) Passports {
 	valid := Passports{}
 	for _, p := range Ps {
 		if p.HasMandatoryFields(mandatory) {
+			valid = append(valid, p)
+		}
+	}
+	return valid
+}
+
+// FilterValid passports with the validators declared above
+func (Ps Passports) FilterValid() Passports {
+	valid := Passports{}
+	for _, p := range Ps {
+		if p.Valid() {
 			valid = append(valid, p)
 		}
 	}
@@ -141,26 +163,4 @@ func isEyeColorValid(ecl string) bool {
 		}
 	}
 	return false
-}
-
-// Valid returns if the passport is valid according to the validators
-// declared above.
-func (P Passport) Valid() bool {
-	for k, v := range P {
-		if k != "cid" && !validators[k](v) {
-			return false
-		}
-	}
-	return true
-}
-
-// FilterValid passports with the validators declared above
-func (Ps Passports) FilterValid() Passports {
-	valid := Passports{}
-	for _, p := range Ps {
-		if p.Valid() {
-			valid = append(valid, p)
-		}
-	}
-	return valid
 }
