@@ -4,31 +4,37 @@ import (
 	"bufio"
 	"fmt"
 	"os"
+	"sort"
 	"strconv"
 )
 
-func sum2(arr []int) (int, int) {
-	for _, fst := range arr {
-		for _, snd := range arr {
-			if fst+snd == 2020 {
-				return fst, snd
-			}
+// sum2 expects the slice to be sorted.
+// This way, we can find the sum in O(n) with the
+// "two-finger" method.
+func sum2(arr []int, sum int) (int, int, bool) {
+	left, right := 0, len(arr)-1
+	for left < right {
+		if arr[left]+arr[right] == sum {
+			return arr[left], arr[right], true
+		}
+		if arr[left]+arr[right] < sum {
+			left++
+		} else {
+			right--
 		}
 	}
-	return 0, 0
+	return 0, 0, false
 }
 
-func sum3(arr []int) (int, int, int) {
-	for _, fst := range arr {
-		for _, snd := range arr {
-			for _, thd := range arr {
-				if fst+snd+thd == 2020 {
-					return fst, snd, thd
-				}
-			}
+// sum3 expects the slice to be sorted.
+// We can find the sum of 3 variables in O(n^2).
+func sum3(arr []int, sum int) (int, int, int, bool) {
+	for _, thd := range arr {
+		if fst, snd, ok := sum2(arr, sum-thd); ok {
+			return fst, snd, thd, true
 		}
 	}
-	return 0, 0, 0
+	return 0, 0, 0, false
 }
 
 func main() {
@@ -52,9 +58,16 @@ func main() {
 		expenses = append(expenses, i)
 	}
 
-	fst, snd := sum2(expenses)
-	fmt.Printf("%d * %d = %d\n", fst, snd, fst*snd)
-	var thd int
-	fst, snd, thd = sum3(expenses)
-	fmt.Printf("%d * %d * %d = %d\n", fst, snd, thd, fst*snd*thd)
+	sort.Ints(expenses) // this is O(n*log(n))
+	if fst, snd, ok := sum2(expenses, 2020); ok {
+		fmt.Printf("%d * %d = %d\n", fst, snd, fst*snd)
+	} else {
+		fmt.Println("there are no 2 variables that add to 2020")
+	}
+
+	if fst, snd, thd, ok := sum3(expenses, 2020); ok {
+		fmt.Printf("%d * %d *%d = %d\n", fst, snd, thd, fst*snd*thd)
+	} else {
+		fmt.Println("there are no 3 variables that add to 2020")
+	}
 }
